@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Find Your Voice Quiz</title>
+  <style>
+    :root {
+      --primary: #4CAF50;
+      --primary-hover: #45a049;
+      --bg: #f7f7f7;
+      --card: #fff;
+      --info: #e3f2fd;
+      --danger: #ffebee;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 20px;
+      line-height: 1.5;
+      color: #222;
+    }
+    h1, h2 { text-align: center; }
+    .quiz-container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: var(--card);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .question { margin-bottom: 20px; }
+    .question h3 { margin: 0 0 10px; font-size: 1.05rem; }
+    label { display: block; margin: 6px 0; cursor: pointer; }
+    input[type="radio"] { margin-right: 8px; }
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      background: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover { background: var(--primary-hover); }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: var(--info);
+    }
+    .error {
+      background: var(--danger);
+      color: #b71c1c;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .sr-only {
+      position: absolute !important;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="quiz-container" role="application" aria-labelledby="title">
+    <h1 id="title">Find Your Voice Quiz</h1>
+    <p id="intro" class="sr-only">Select one answer for each question and press “See Your Voice”.</p>
+
+    <div id="error" class="error" style="display:none" aria-live="polite"></div>
+
+    <div id="quiz" aria-describedby="intro"></div>
+
+    <div class="actions">
+      <button id="submit" type="button">See Your Voice</button>
+      <button id="reset" type="button" aria-label="Reset quiz and clear selections">Reset</button>
+    </div>
+
+    <div id="result" aria-live="polite"></div>
+  </div>
+
+  <script>
+    // Questions array
+    const questions = [
+      { q: "A project is behind schedule. What’s your first instinct?",
+        options: ["A) Clarify goals", "B) Inspire the team", "C) Analyze cause", "D) Ask how they feel", "E) Take action myself"],
+        values:  ["A","B","C","D","E"]
+      },
+      { q: "When making a tough decision, you…",
+        options: ["A) Decide quickly","B) Share vision","C) Gather data","D) Consult team","E) Solve hands-on"],
+        values:  ["A","B","C","D","E"]
+      },
+      { q: "When giving instructions, you tend to…",
+        options: ["A) Be precise","B) Explain purpose","C) Detail process","D) Use stories","E) Show how"],
+        values:  ["A","B","C","D","E"]
+      },
+      { q: "A teammate isn’t delivering. You…",
+        options: ["A) Set expectations","B) Motivate","C) Analyze process","D) Offer support","E) Step in to help"],
+        values:  ["A","B","C","D","E"]
+      },
+      { q: "When deadlines are tight, you…",
+        options: ["A) Reprioritize","B) Inspire urgency","C) Analyze resources","D) Encourage team","E) Take tasks yourself"],
+        values:  ["A","B","C","D","E"]
+      }
+      // Add more questions here...
+    ];
+
+    const profile = {
+      A: "Clarity-Driven Executor: Direct, goal-focused, sets expectations, solves confusion.",
+      B: "Inspirational Visionary: Motivates, rallies the team, communicates the 'why'.",
+      C: "Analytical Stabilizer: Cautious, methodical, relies on data and logic.",
+      D: "Empathetic Collaborator: Supportive, team-focused, values emotional alignment.",
+      E: "Hands-On Problem Solver: Takes action, leads by example, prioritizes results."
+    };
+
+    const quizDiv   = document.getElementById("quiz");
+    const resultDiv = document.getElementById("result");
+    const errorDiv  = document.getElementById("error");
+    const submitBtn = document.getElementById("submit");
+    const resetBtn  = document.getElementById("reset");
+
+    // Build the quiz
+    questions.forEach((q, i) => {
+      const groupId = `q${i}`;
+      const div = document.createElement("fieldset");
+      div.classList.add("question");
+      div.setAttribute("role", "group");
+      div.setAttribute("aria-labelledby", `legend-${groupId}`);
+
+      const legend = document.createElement("legend");
+      legend.id = `legend-${groupId}`;
+      legend.innerHTML = `Q${i + 1}: ${q.q}`;
+      div.appendChild(legend);
+
+      q.options.forEach((opt, j) => {
+        const id = `${groupId}-opt${j}`;
+        const lbl = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = groupId;
+        input.id = id;
+        input.value = q.values[j];
+        input.required = true; // helps validation on first unanswered question
+        lbl.setAttribute("for", id);
+        lbl.appendChild(input);
+        lbl.appendChild(document.createTextNode(" " + opt));
+        div.appendChild(lbl);
+      });
+
+      quizDiv.appendChild(div);
+    });
+
+    // Utility: get selected values
+    function getSelections() {
+      return questions.map((_, i) => {
+        return document.querySelector(`input[name="q${i}"]:checked`);
+      });
+    }
+
+    // Utility: compute result
+    function computeResult(selections) {
+      const counts = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+      selections.forEach(sel => {
+        if (sel) counts[sel.value]++;
+      });
+      // In ties, keep the first highest encountered
+      return Object.keys(counts).reduce((a, b) => counts[a] >= counts[b] ? a : b);
+    }
+
+    // Show error if unanswered
+    function showFirstUnanswered(selections) {
+      const idx = selections.findIndex(s => !s);
+      if (idx !== -1) {
+        errorDiv.style.display = "block";
+        errorDiv.textContent = `Please answer Question ${idx + 1} before submitting.`;
+        // Move focus to that fieldset
+        const target = document.querySelectorAll(".question")[idx];
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.focus?.();
+        return true;
+      }
+      errorDiv.style.display = "none";
+      errorDiv.textContent = "";
+      return false;
+    }
+
+    // Submit
+    submitBtn.addEventListener("click", () => {
+      const selections = getSelections();
+      if (showFirstUnanswered(selections)) return;
+
+      const max = computeResult(selections);
+      resultDiv.innerHTML = `
+        <h2>Your Voice: ${max}</h2>
+        <p>${profile[max]}</p>
+      `;
+    });
+
+    // Reset
+    resetBtn.addEventListener("click", () => {
+      document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+      resultDiv.innerHTML = "";
+      errorDiv.style.display = "none";
+      errorDiv.textContent = "";
+      // Optional: scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  </script>
+</body>
+</html>
